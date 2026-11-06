@@ -1,24 +1,27 @@
-# new-game
+# Noon Panic
 
-A small browser game inspired by the tense, money-and-hostages energy of a classic hostile bank-robbery movie, but rebuilt as a retro 8-bit-style experience.
+A Nintendo-inspired 8-bit browser game with a rescue-and-escape bank-heist vibe.
 
-How to run:
+Run it locally:
 
-1. Open `index.html` in a browser, or run a tiny local server from the project folder:
+1. In this folder, start a local server:
    `python3 -m http.server 8000`
-2. Then visit `http://localhost:8000`
+2. Open: `http://localhost:8000`
 
 Controls:
-- WASD or Arrow keys: move
+- WASD or Arrow keys to move
 - Collect cash bags
-- Stay near hostages to recruit them
-- Escape through the car exit while the timer is still counting down
+- Rescue hostages
+- Reach the getaway car before time runs out
 
-Goal:
-- Get enough cash, protect your health, and reach the getaway before the cops lock you down.
+This version leans into a more retro `NES` feeling with:
+- bold pixel HUD
+- high-contrast colors
+- arcade-style gameplay
+- 8-bit-inspired action and polish
 
 Files:
 - `index.html` — game shell
-- `style.css` — retro UI styling
-- `game.js` — gameplay logic and rendering
+- `style.css` — retro styling
+- `game.js` — gameplay logic
 

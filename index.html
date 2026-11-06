@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Noon Panic</title>
+    <title>Noon Panic 8-Bit</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -12,25 +12,24 @@
         <div><span class="label">Score</span><span id="score">0</span></div>
         <div><span class="label">Cash</span><span id="cash">0</span></div>
         <div><span class="label">Timer</span><span id="timer">90</span></div>
-        <div><span class="label">Hostages</span><span id="hostages">0</span></div>
+        <div><span class="label">Lives</span><span id="lives">3</span></div>
+        <div><span class="label">Rescue</span><span id="hostages">0</span></div>
       </div>
 
-      <canvas id="game" width="960" height="540" aria-label="Retrolike bank robbery game"></canvas>
+      <canvas id="game" width="640" height="360" aria-label="Retro Nintendo-styled bank robbery game"></canvas>
 
       <div id="overlay" class="overlay visible">
         <div class="panel">
+          <div class="panel-tag">NES STYLE HEIST</div>
           <h1>Noon Panic</h1>
-          <p>
-            A tense bank-heist romp in a pixel-art neighborhood, inspired by late-night hostage
-            drama and a desperate rush to escape.
-          </p>
+          <p>Grab the stash, rescue your crew, and sprint to the getaway.</p>
           <ul>
-            <li>Move with WASD or arrow keys</li>
-            <li>Collect cash bags</li>
-            <li>Keep the hostages close</li>
-            <li>Reach the getaway car before the timer hits zero</li>
+            <li>Move: WASD / Arrow Keys</li>
+            <li>Collect cash</li>
+            <li>Rescue hostages</li>
+            <li>Reach the getaway before time expires</li>
           </ul>
-          <button id="startBtn">Start Heist</button>
+          <button id="startBtn">Start</button>
         </div>
       </div>
     </div>
