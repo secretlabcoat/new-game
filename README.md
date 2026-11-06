@@ -1,27 +1,15 @@
-# Noon Panic
+# Dog Day Afternoon — 8-Bit Arcade
 
-A Nintendo-inspired 8-bit browser game with a rescue-and-escape bank-heist vibe.
+A small, original retro arcade caper that runs in a browser. It uses a pixel-art style and a fictional rescue-and-escape game scenario; it does not reproduce the film's characters, dialogue, or scenes.
 
-Run it locally:
+## Play locally
 
-1. In this folder, start a local server:
-   `python3 -m http.server 8000`
-2. Open: `http://localhost:8000`
+Open `index.html`, or run `python3 -m http.server 8000` in this folder and visit `http://localhost:8000`.
 
-Controls:
-- WASD or Arrow keys to move
-- Collect cash bags
-- Rescue hostages
-- Reach the getaway car before time runs out
+## Controls
 
-This version leans into a more retro `NES` feeling with:
-- bold pixel HUD
-- high-contrast colors
-- arcade-style gameplay
-- 8-bit-inspired action and polish
+- Desktop: WASD or arrow keys
+- Phone/tablet: press and hold the on-screen directional pad
+- Collect at least four cash bags, meet one crew member, and reach the glowing exit before the timer expires.
 
-Files:
-- `index.html` — game shell
-- `style.css` — retro styling
-- `game.js` — gameplay logic
-
+No app install or external assets are needed.
