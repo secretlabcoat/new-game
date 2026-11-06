@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Noon Panic</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="game-shell">
+      <div class="hud">
+        <div><span class="label">Score</span><span id="score">0</span></div>
+        <div><span class="label">Cash</span><span id="cash">0</span></div>
+        <div><span class="label">Timer</span><span id="timer">90</span></div>
+        <div><span class="label">Hostages</span><span id="hostages">0</span></div>
+      </div>
+
+      <canvas id="game" width="960" height="540" aria-label="Retrolike bank robbery game"></canvas>
+
+      <div id="overlay" class="overlay visible">
+        <div class="panel">
+          <h1>Noon Panic</h1>
+          <p>
+            A tense bank-heist romp in a pixel-art neighborhood, inspired by late-night hostage
+            drama and a desperate rush to escape.
+          </p>
+          <ul>
+            <li>Move with WASD or arrow keys</li>
+            <li>Collect cash bags</li>
+            <li>Keep the hostages close</li>
+            <li>Reach the getaway car before the timer hits zero</li>
+          </ul>
+          <button id="startBtn">Start Heist</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
