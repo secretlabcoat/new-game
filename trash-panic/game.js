@@ -67,7 +67,19 @@
   let bgCanvas = null;
   let bgImage = null;
   let binWalls = [];
+  let musicGain = null;
   const music = { on: true, nextTime: 0, chordIdx: 0, stepIdx: 0, birdAt: 0 };
+
+  function musicBus() {
+    const ac = audio();
+    if (!ac) return null;
+    if (!musicGain) {
+      musicGain = ac.createGain();
+      musicGain.gain.setValueAtTime(music.on ? 1 : 0, ac.currentTime);
+      musicGain.connect(ac.destination);
+    }
+    return musicGain;
+  }
   let bestScore = Number(localStorage.getItem("trashpanic.best") || 0);
   el.best.textContent = bestScore;
 
@@ -184,7 +196,8 @@
 
   function padNote(freq, at, dur) {
     const ac = audio();
-    if (!ac) return;
+    const bus = musicBus();
+    if (!ac || !bus) return;
     for (const [type, detune, vol] of [["sine", 0, 0.022], ["triangle", 4, 0.012]]) {
       const osc = ac.createOscillator();
       const gain = ac.createGain();
@@ -195,7 +208,7 @@
       gain.gain.linearRampToValueAtTime(vol, at + 1.1);
       gain.gain.setValueAtTime(vol, at + dur - 1.2);
       gain.gain.linearRampToValueAtTime(0.0001, at + dur);
-      osc.connect(gain).connect(ac.destination);
+      osc.connect(gain).connect(bus);
       osc.start(at);
       osc.stop(at + dur + 0.1);
     }
@@ -203,21 +216,23 @@
 
   function pluck(freq, at) {
     const ac = audio();
-    if (!ac) return;
+    const bus = musicBus();
+    if (!ac || !bus) return;
     const osc = ac.createOscillator();
     const gain = ac.createGain();
     osc.type = "sine";
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.035, at);
     gain.gain.exponentialRampToValueAtTime(0.001, at + 0.9);
-    osc.connect(gain).connect(ac.destination);
+    osc.connect(gain).connect(bus);
     osc.start(at);
     osc.stop(at + 1);
   }
 
   function birdChirp(at) {
     const ac = audio();
-    if (!ac) return;
+    const bus = musicBus();
+    if (!ac || !bus) return;
     const n = 2 + Math.floor(Math.random() * 3);
     for (let i = 0; i < n; i++) {
       const osc = ac.createOscillator();
@@ -229,7 +244,7 @@
       osc.frequency.exponentialRampToValueAtTime(f * 0.7, t0 + 0.09);
       gain.gain.setValueAtTime(0.018, t0);
       gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.1);
-      osc.connect(gain).connect(ac.destination);
+      osc.connect(gain).connect(bus);
       osc.start(t0);
       osc.stop(t0 + 0.12);
     }
@@ -237,7 +252,7 @@
 
   function scheduleMusic() {
     const ac = audio();
-    if (!ac || !music.on || state.over) return;
+    if (!ac || !music.on || state.over || ac.state !== "running") return;
     if (music.nextTime < ac.currentTime) music.nextTime = ac.currentTime + 0.1;
     const ahead = ac.currentTime + 0.6;
     while (music.nextTime < ahead) {
@@ -1111,6 +1126,9 @@
       smashAction();
     } else if (e.code === "KeyM") {
       music.on = !music.on;
+      const ac = audio();
+      const bus = musicBus();
+      if (ac && bus) bus.gain.setValueAtTime(music.on ? 1 : 0, ac.currentTime);
       banner(music.on ? "♫ MUSIC ON" : "MUSIC OFF", "#5c8bd6");
     } else if (e.code === "KeyP" || e.code === "Escape") {
       if (state && state.playing) {
@@ -1158,5 +1176,5 @@
   };
   bgLoader.src = "assets/bg.jpg";
 
-  window.__tp = { getState: () => state, startGame, smashAction, bodies: () => trashBodies(), defs: TRASH, spawn: spawnItem, hit: trySmash, bin: BIN };
+  window.__tp = { getState: () => state, startGame, smashAction, bodies: () => trashBodies(), defs: TRASH, spawn: spawnItem, hit: trySmash, bin: BIN, _sfx: sfx, _matHit: matHit, _matBreak: matBreak };
 })();
