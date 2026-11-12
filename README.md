@@ -16,4 +16,4 @@ No app install or external assets are needed.
 
 ## More games
 
-- [Trash Panic — Eco Smash](trash-panic/) — a physics falling-trash puzzle: smash, bomb, and compost the garbage before the can overflows. Open `trash-panic/index.html` or visit `/trash-panic/` on GitHub Pages.
+- [Trash Panic — Eco Smash](trash-panic/) — a physics falling-trash puzzle: squish food, crack metal item by item, and bomb the big stuff before the can overflows. Open `trash-panic/index.html` or visit `/trash-panic/` on GitHub Pages.
