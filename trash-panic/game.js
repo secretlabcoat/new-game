@@ -59,7 +59,8 @@
     overlay: document.getElementById("overlay"),
     overlayText: document.getElementById("overlayText"),
     overlayHelp: document.getElementById("overlayHelp"),
-    startBtn: document.getElementById("startBtn")
+    startBtn: document.getElementById("startBtn"),
+    lives: document.getElementById("lives")
   };
 
   let engine = null;
@@ -71,12 +72,11 @@
   const music = { on: true, nextTime: 0, chordIdx: 0, stepIdx: 0, birdAt: 0 };
 
   function musicBus() {
-    const ac = audio();
-    if (!ac) return null;
+    if (!audioCtx) return null;
     if (!musicGain) {
-      musicGain = ac.createGain();
-      musicGain.gain.setValueAtTime(music.on ? 1 : 0, ac.currentTime);
-      musicGain.connect(ac.destination);
+      musicGain = audioCtx.createGain();
+      musicGain.gain.setValueAtTime(music.on ? 1.6 : 0, audioCtx.currentTime);
+      musicGain.connect(audioCtx.destination);
     }
     return musicGain;
   }
@@ -101,7 +101,7 @@
     osc.type = type;
     osc.frequency.setValueAtTime(freq, ac.currentTime);
     osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), ac.currentTime + dur);
-    gain.gain.setValueAtTime(vol, ac.currentTime);
+    gain.gain.setValueAtTime(Math.min(0.5, vol * 2.2), ac.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
     osc.connect(gain).connect(ac.destination);
     osc.start();
@@ -119,7 +119,8 @@
     levelup: () => { tone(520, 520, 0.09, "sine", 0.2); setTimeout(() => tone(660, 660, 0.09, "sine", 0.2), 90); setTimeout(() => tone(990, 990, 0.18, "sine", 0.22), 180); },
     over: () => { tone(300, 60, 0.7, "sawtooth", 0.3); },
     whoosh: () => tone(600, 140, 0.18, "sawtooth", 0.08),
-    splat: () => { tone(320, 60, 0.12, "sine", 0.25); tone(700, 120, 0.08, "triangle", 0.15); }
+    splat: () => { tone(320, 60, 0.12, "sine", 0.25); tone(700, 120, 0.08, "triangle", 0.15); },
+    sad: () => { tone(240, 70, 0.45, "sawtooth", 0.2); tone(120, 50, 0.5, "triangle", 0.15); }
   };
 
   function pianoChord(vol) {
@@ -131,7 +132,7 @@
       const gain = ac.createGain();
       osc.type = "sine";
       osc.frequency.value = f;
-      gain.gain.setValueAtTime(vol || 0.05, ac.currentTime);
+      gain.gain.setValueAtTime(Math.min(0.2, (vol || 0.05) * 2), ac.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.9);
       osc.connect(gain).connect(ac.destination);
       osc.start();
@@ -195,10 +196,10 @@
   ];
 
   function padNote(freq, at, dur) {
-    const ac = audio();
+    const ac = audioCtx;
     const bus = musicBus();
     if (!ac || !bus) return;
-    for (const [type, detune, vol] of [["sine", 0, 0.022], ["triangle", 4, 0.012]]) {
+    for (const [type, detune, vol] of [["sine", 0, 0.05], ["triangle", 4, 0.028]]) {
       const osc = ac.createOscillator();
       const gain = ac.createGain();
       osc.type = type;
@@ -215,14 +216,14 @@
   }
 
   function pluck(freq, at) {
-    const ac = audio();
+    const ac = audioCtx;
     const bus = musicBus();
     if (!ac || !bus) return;
     const osc = ac.createOscillator();
     const gain = ac.createGain();
     osc.type = "sine";
     osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.035, at);
+    gain.gain.setValueAtTime(0.08, at);
     gain.gain.exponentialRampToValueAtTime(0.001, at + 0.9);
     osc.connect(gain).connect(bus);
     osc.start(at);
@@ -230,7 +231,7 @@
   }
 
   function birdChirp(at) {
-    const ac = audio();
+    const ac = audioCtx;
     const bus = musicBus();
     if (!ac || !bus) return;
     const n = 2 + Math.floor(Math.random() * 3);
@@ -242,7 +243,7 @@
       osc.type = "sine";
       osc.frequency.setValueAtTime(f, t0);
       osc.frequency.exponentialRampToValueAtTime(f * 0.7, t0 + 0.09);
-      gain.gain.setValueAtTime(0.018, t0);
+      gain.gain.setValueAtTime(0.04, t0);
       gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.1);
       osc.connect(gain).connect(bus);
       osc.start(t0);
@@ -251,7 +252,7 @@
   }
 
   function scheduleMusic() {
-    const ac = audio();
+    const ac = audioCtx;
     if (!ac || !music.on || state.over || ac.state !== "running") return;
     if (music.nextTime < ac.currentTime) music.nextTime = ac.currentTime + 0.1;
     const ahead = ac.currentTime + 0.6;
@@ -274,7 +275,37 @@
     }
   }
 
-  const keys = { left: false, right: false, down: false };
+  const keys = { left: false, right: false };
+
+  const garb = { cheerT: 0, worryT: 0, bubble: null, bubbleT: 0 };
+  const birds = [];
+  let birdTimer = 4000;
+  const hobo = { peekT: 0, nextPeek: 8000 };
+
+  const CHEERS = ["NICE!", "ECO!", "GET IN THERE!", "SMASH IT!", "CLEAN SWEEP!", "THAT'S THE STUFF!"];
+
+  function updateLivesHud() {
+    el.lives.textContent = "♥".repeat(state.lives) + "♡".repeat(Math.max(0, 3 - state.lives));
+    el.lives.style.color = state.lives <= 1 ? "#d84343" : "";
+  }
+
+  function groundDrop(body) {
+    const t = body.plugin.trash;
+    const x = body.position.x;
+    removeBody(body);
+    state.lives -= 1;
+    updateLivesHud();
+    sfx.sad();
+    state.shake = 8;
+    burst(x, 688, "#8d6e63", 12, 3);
+    state.floats.push({ x, y: 630, text: "DROPPED!", life: 1100, color: "#d84343" });
+    garb.worryT = 2000;
+    garb.bubble = state.lives > 0 ? "WATCH IT!" : "WE'RE DONE...";
+    garb.bubbleT = 2000;
+    if (state.lives <= 0) {
+      gameOver("Three items dropped on the ground!");
+    }
+  }
 
   function freshState() {
     return {
@@ -289,6 +320,7 @@
       nextSpawnAt: 0,
       hammer: MAX_HAMMER,
       hammerTimer: 0,
+      lives: 3,
       dangerMs: 0,
       combo: 0,
       comboUntil: 0,
@@ -307,10 +339,13 @@
     engine.gravity.y = GRAVITY;
     const opts = { isStatic: true, friction: 0.6, restitution: 0.02, label: "bin" };
     const midY = (BIN.rim + BIN.bottom) / 2;
+    const groundOpts = { isStatic: true, friction: 0.8, restitution: 0.01, label: "ground" };
     binWalls = [
       Bodies.rectangle(BIN.left - BIN.wall / 2, midY, BIN.wall, BIN.bottom - BIN.rim, opts),
       Bodies.rectangle(BIN.right + BIN.wall / 2, midY, BIN.wall, BIN.bottom - BIN.rim, opts),
-      Bodies.rectangle((BIN.left + BIN.right) / 2, BIN.bottom + BIN.wall / 2, BIN.right - BIN.left + BIN.wall * 2, BIN.wall, opts)
+      Bodies.rectangle((BIN.left + BIN.right) / 2, BIN.bottom + BIN.wall / 2, BIN.right - BIN.left + BIN.wall * 2, BIN.wall, opts),
+      Bodies.rectangle((BIN.left - BIN.wall - 20) / 2, 710, BIN.left - BIN.wall + 20, 40, groundOpts),
+      Bodies.rectangle((BIN.right + BIN.wall + W + 20) / 2, 710, W + 20 - (BIN.right + BIN.wall), 40, groundOpts)
     ];
     Composite.add(engine.world, [
       ...binWalls,
@@ -332,9 +367,14 @@
         }
         for (const body of [a, b]) {
           const t = body.plugin && body.plugin.trash;
+          const other = body === a ? b : a;
+          if (t && other.label === "ground" && !t.groundTouched) {
+            t.groundTouched = state.clock;
+          }
           if (!t) continue;
           if (!t.landed) {
             t.landed = true;
+            t.landTime = state.clock;
             if (t.bomb && !t.fuse) {
               t.fuse = 1400;
               t.fuseBeep = 0;
@@ -356,12 +396,15 @@
 
   function rebuildBinWalls() {
     const opts = { isStatic: true, friction: 0.6, restitution: 0.02, label: "bin" };
+    const groundOpts = { isStatic: true, friction: 0.8, restitution: 0.01, label: "ground" };
     const midY = (BIN.rim + BIN.bottom) / 2;
     for (const wall of binWalls) Composite.remove(engine.world, wall);
     binWalls = [
       Bodies.rectangle(BIN.left - BIN.wall / 2, midY, BIN.wall, BIN.bottom - BIN.rim, opts),
       Bodies.rectangle(BIN.right + BIN.wall / 2, midY, BIN.wall, BIN.bottom - BIN.rim, opts),
-      Bodies.rectangle((BIN.left + BIN.right) / 2, BIN.bottom + BIN.wall / 2, BIN.right - BIN.left + BIN.wall * 2, BIN.wall, opts)
+      Bodies.rectangle((BIN.left + BIN.right) / 2, BIN.bottom + BIN.wall / 2, BIN.right - BIN.left + BIN.wall * 2, BIN.wall, opts),
+      Bodies.rectangle((BIN.left - BIN.wall - 20) / 2, 710, BIN.left - BIN.wall + 20, 40, groundOpts),
+      Bodies.rectangle((BIN.right + BIN.wall + W + 20) / 2, 710, W + 20 - (BIN.right + BIN.wall), 40, groundOpts)
     ];
     Composite.add(engine.world, binWalls);
   }
@@ -370,8 +413,8 @@
     if (state.binTier >= BIN_UPGRADES.length) return;
     if (state.score < BIN_UPGRADES[state.binTier]) return;
     state.binTier += 1;
-    BIN.left -= 20;
-    BIN.right += 20;
+    BIN.left -= 12;
+    BIN.right += 12;
     rebuildBinWalls();
     banner("BIN UPGRADED!", "#ff8f00");
     sfx.levelup();
@@ -468,6 +511,13 @@
         life: 1100,
         color: color || "#e07b00"
       });
+    }
+    if (gained >= 100 && Math.random() < 0.45) {
+      garb.cheerT = 1300;
+      if (!garb.bubbleT && Math.random() < 0.6) {
+        garb.bubble = CHEERS[Math.floor(Math.random() * CHEERS.length)];
+        garb.bubbleT = 1600;
+      }
     }
   }
 
@@ -650,10 +700,8 @@
       } else {
         Body.setVelocity(active, { x: vx * 4.4, y: Math.min(active.velocity.y, FALL_CAP) });
       }
-      const minX = BIN.left + 24;
-      const maxX = BIN.right - 24;
-      if (active.position.x < minX) Body.setPosition(active, { x: minX, y: active.position.y });
-      if (active.position.x > maxX) Body.setPosition(active, { x: maxX, y: active.position.y });
+      if (active.position.x < 26) Body.setPosition(active, { x: 26, y: active.position.y });
+      if (active.position.x > W - 26) Body.setPosition(active, { x: W - 26, y: active.position.y });
     }
 
     const bodies = trashBodies();
@@ -688,11 +736,15 @@
         }
       }
 
-      if (t.settled && body.bounds.min.y < OVERFLOW_Y) danger = true;
+      if (t.landed && speed < 1.2 && body.bounds.min.y < OVERFLOW_Y) danger = true;
+
+      if (t.groundTouched && state.clock - t.groundTouched > 700) {
+        groundDrop(body);
+        continue;
+      }
 
       if (body.position.y > H + 80) {
         removeBody(body);
-        state.floats.push({ x: body.position.x, y: 400, text: "MISS", life: 800, color: "#d84343" });
       }
     }
 
@@ -736,9 +788,46 @@
       spawnNext();
       state.nextSpawnAt = state.clock + 600;
     }
-    if (state.active && state.active.plugin.trash.settled) {
-      state.active = null;
-      state.nextSpawnAt = state.clock + 500;
+    if (state.active && state.active.plugin.trash.landed) {
+      const at = state.active.plugin.trash;
+      if (!at.landHandled) {
+        at.landHandled = true;
+        state.nextSpawnAt = Math.min(state.nextSpawnAt, at.landTime + 550);
+      }
+      if (state.clock > at.landTime + 500) state.active = null;
+    }
+
+    garb.cheerT = Math.max(0, garb.cheerT - dt);
+    garb.worryT = Math.max(0, garb.worryT - dt);
+    garb.bubbleT = Math.max(0, garb.bubbleT - dt);
+    hobo.peekT = Math.max(0, hobo.peekT - dt);
+    if (hobo.peekT === 0) {
+      hobo.nextPeek -= dt;
+      if (hobo.nextPeek <= 0) {
+        hobo.peekT = 2600;
+        hobo.nextPeek = 9000 + Math.random() * 8000;
+      }
+    }
+
+    birdTimer -= dt;
+    if (birdTimer <= 0) {
+      birdTimer = 7000 + Math.random() * 8000;
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      birds.push({
+        x: dir > 0 ? -30 : W + 30,
+        y: 50 + Math.random() * 170,
+        vx: dir * (1.3 + Math.random() * 0.9),
+        ph: Math.random() * 10
+      });
+      const ac = audioCtx;
+      if (ac && ac.state === "running" && music.on) birdChirp(ac.currentTime + 0.05);
+    }
+    for (const bird of birds) {
+      bird.x += bird.vx;
+      bird.y += Math.sin(state.clock / 400 + bird.ph) * 0.35;
+    }
+    for (let i = birds.length - 1; i >= 0; i--) {
+      if (birds[i].x < -60 || birds[i].x > W + 60) birds.splice(i, 1);
     }
 
     for (const p of state.particles) {
@@ -760,12 +849,12 @@
     Engine.update(engine, Math.min(dt, 33));
   }
 
-  function gameOver() {
+  function gameOver(reason) {
     state.over = true;
     state.playing = false;
     sfx.over();
     el.overlayHelp.style.display = "none";
-    el.overlayText.textContent = "The can overflowed! Final score: " + state.score + " · Best: " + bestScore;
+    el.overlayText.textContent = (reason || "The can overflowed!") + " Final score: " + state.score + " · Best: " + bestScore;
     el.startBtn.textContent = "Play Again";
     el.overlay.classList.add("visible");
   }
@@ -782,11 +871,21 @@
     el.score.textContent = "0";
     el.level.textContent = "1";
     el.next.textContent = "❓";
+    updateLivesHud();
     updateHammerHud();
+    birds.length = 0;
+    garb.cheerT = 0;
+    garb.worryT = 0;
+    garb.bubbleT = 0;
+    garb.bubble = null;
+    hobo.peekT = 0;
+    hobo.nextPeek = 8000;
+    birdTimer = 4000;
     el.overlay.classList.remove("visible");
     el.overlayHelp.style.display = "";
     state.playing = true;
     state.nextSpawnAt = state.clock + 400;
+    sfx.chime();
   }
 
   function srand(seed) {
@@ -919,6 +1018,143 @@
     ctx.fill();
   }
 
+  function drawFence() {
+    ctx.fillStyle = "#9a958c";
+    ctx.fillRect(4, 598, 86, 56);
+    ctx.strokeStyle = "#7b766d";
+    ctx.lineWidth = 2;
+    for (let row = 0; row < 3; row++) {
+      const y = 612 + row * 15;
+      ctx.beginPath();
+      ctx.moveTo(4, y);
+      ctx.lineTo(90, y);
+      ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        const x = 14 + i * 20 + (row % 2 ? 10 : 0);
+        if (x > 86) continue;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y - 15);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = "#8a857c";
+    ctx.fillRect(2, 592, 90, 8);
+  }
+
+  function drawHobo() {
+    drawFence();
+    if (hobo.peekT <= 0) return;
+    const p = 1 - hobo.peekT / 2600;
+    const rise = p < 0.18 ? p / 0.18 : p > 0.82 ? (1 - p) / 0.18 : 1;
+    const hx = 46;
+    const hy = 640 - rise * 46;
+    ctx.fillStyle = "#f0c8a0";
+    ctx.beginPath();
+    ctx.arc(hx, hy, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#8d6e63";
+    ctx.beginPath();
+    ctx.arc(hx, hy + 7, 9, 0, Math.PI);
+    ctx.fill();
+    ctx.fillStyle = "#5d4037";
+    ctx.beginPath();
+    ctx.ellipse(hx, hy - 9, 14, 6, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(hx - 18, hy - 11, 10, 4);
+    ctx.fillStyle = "#3e2723";
+    ctx.beginPath();
+    ctx.arc(hx - 4.5, hy - 1, 1.6, 0, Math.PI * 2);
+    ctx.arc(hx + 4.5, hy - 1, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#f0c8a0";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(hx - 16, 606);
+    ctx.lineTo(hx - 10, 596 + (1 - rise) * 10);
+    ctx.moveTo(hx + 16, 606);
+    ctx.lineTo(hx + 10, 596 + (1 - rise) * 10);
+    ctx.stroke();
+  }
+
+  function drawGarb() {
+    const cheering = garb.cheerT > 0;
+    const worried = garb.worryT > 0;
+    const bob = Math.sin(state.clock / 320) * 2;
+    const jump = cheering ? -Math.abs(Math.sin(state.clock / 110)) * 12 : 0;
+    const gx = 448;
+    const gy = 718 + bob * 0.4 + jump;
+    ctx.fillStyle = "#3e5771";
+    ctx.fillRect(gx - 11, gy - 28, 9, 28);
+    ctx.fillRect(gx + 2, gy - 28, 9, 28);
+    ctx.fillStyle = "#2b2b2b";
+    ctx.fillRect(gx - 14, gy - 6, 14, 6);
+    ctx.fillRect(gx + 1, gy - 6, 14, 6);
+    ctx.fillStyle = "#4a6d9b";
+    ctx.beginPath();
+    ctx.roundRect(gx - 19, gy - 60, 38, 34, 9);
+    ctx.fill();
+    ctx.fillStyle = "#f0c8a0";
+    ctx.beginPath();
+    ctx.arc(gx, gy - 69, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3a7d44";
+    ctx.beginPath();
+    ctx.arc(gx, gy - 74, 12, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(gx - 16, gy - 76, 20, 4);
+    ctx.fillStyle = "#3e2723";
+    ctx.beginPath();
+    ctx.arc(gx - 4.5, gy - 69, 1.7, 0, Math.PI * 2);
+    ctx.arc(gx + 4.5, gy - 69, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = cheering || worried ? "#f0c8a0" : "#f0c8a0";
+    ctx.lineWidth = 6;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    if (cheering) {
+      ctx.moveTo(gx - 16, gy - 52);
+      ctx.lineTo(gx - 26, gy - 84);
+      ctx.moveTo(gx + 16, gy - 52);
+      ctx.lineTo(gx + 26, gy - 84);
+    } else if (worried) {
+      ctx.moveTo(gx - 16, gy - 52);
+      ctx.lineTo(gx - 10, gy - 80);
+      ctx.moveTo(gx + 16, gy - 52);
+      ctx.lineTo(gx + 10, gy - 80);
+    } else {
+      const sway = Math.sin(state.clock / 320) * 3;
+      ctx.moveTo(gx - 16, gy - 52);
+      ctx.lineTo(gx - 22, gy - 30 + sway);
+      ctx.moveTo(gx + 16, gy - 52);
+      ctx.lineTo(gx + 22, gy - 30 - sway);
+    }
+    ctx.stroke();
+    ctx.lineCap = "butt";
+    if (garb.bubbleT > 0 && garb.bubble) {
+      const a = Math.min(1, garb.bubbleT / 300);
+      ctx.globalAlpha = a;
+      ctx.font = "bold 13px 'Trebuchet MS', sans-serif";
+      const tw = ctx.measureText(garb.bubble).width;
+      const bx = Math.min(gx + 14, W - tw - 26);
+      const by = gy - 118;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.roundRect(bx, by, tw + 18, 24, 8);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(bx + 8, by + 24);
+      ctx.lineTo(bx + 2, by + 34);
+      ctx.lineTo(bx + 18, by + 24);
+      ctx.fill();
+      ctx.fillStyle = "#263238";
+      ctx.textAlign = "left";
+      ctx.fillText(garb.bubble, bx + 9, by + 16);
+      ctx.textAlign = "center";
+      ctx.globalAlpha = 1;
+    }
+  }
+
   function drawBin() {
     const x0 = BIN.left - BIN.wall;
     const x1 = BIN.right + BIN.wall;
@@ -996,6 +1232,19 @@
       }
     }
 
+    for (const bird of birds) {
+      const flap = Math.sin(state.clock / 85 + bird.ph);
+      ctx.strokeStyle = "#37474f";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(bird.x - 9, bird.y - flap * 6);
+      ctx.quadraticCurveTo(bird.x - 3, bird.y + 3, bird.x, bird.y);
+      ctx.quadraticCurveTo(bird.x + 3, bird.y + 3, bird.x + 9, bird.y - flap * 6);
+      ctx.stroke();
+    }
+
+    drawHobo();
+
     if (!engine) {
       ctx.restore();
       return;
@@ -1029,6 +1278,19 @@
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+
+    const act = state.active;
+    if (act && act.plugin.trash.slammed && !act.plugin.trash.landed) {
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.lineWidth = 3;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(act.position.x + i * 12, act.position.y - 30);
+        ctx.lineTo(act.position.x + i * 12, act.position.y - 85);
+        ctx.stroke();
+      }
+    }
+
     for (const body of trashBodies()) {
       const t = body.plugin.trash;
       if (t.debris) {
@@ -1100,6 +1362,8 @@
       ctx.fillRect(0, 0, W, H);
     }
 
+    drawGarb();
+
     ctx.restore();
   }
 
@@ -1115,6 +1379,7 @@
   }
 
   document.addEventListener("keydown", (e) => {
+    audio();
     if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = true;
     else if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = true;
     else if (e.code === "ArrowDown") {
@@ -1128,7 +1393,7 @@
       music.on = !music.on;
       const ac = audio();
       const bus = musicBus();
-      if (ac && bus) bus.gain.setValueAtTime(music.on ? 1 : 0, ac.currentTime);
+      if (ac && bus) bus.gain.setValueAtTime(music.on ? 1.6 : 0, ac.currentTime);
       banner(music.on ? "♫ MUSIC ON" : "MUSIC OFF", "#5c8bd6");
     } else if (e.code === "KeyP" || e.code === "Escape") {
       if (state && state.playing) {
@@ -1148,6 +1413,7 @@
     const key = btn.dataset.key;
     const press = (e) => {
       e.preventDefault();
+      audio();
       if (key === "KeyS") smashAction();
       else if (key === "ArrowDown") slamActive();
       else if (key === "ArrowLeft") keys.left = true;
