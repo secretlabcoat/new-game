@@ -10,9 +10,11 @@
   const OVERFLOW_LIMIT_MS = 3000;
   const MAX_HAMMER = 3;
   const HAMMER_RECHARGE_MS = 5000;
-  const GRAVITY = 0.65;
-  const FALL_CAP = 3.4;
+  const GRAVITY = 0.8;
+  const FALL_CAP = 4.2;
   const SLAM_CAP = 8;
+  const WALL_TOP = 375;
+  const WALL_BASE = 516;
   const SQUISH_SPEED = 3;
   const SLAM_VELOCITY = 12;
   const COMPACT_INTERVAL = 1200;
@@ -119,8 +121,36 @@
     levelup: () => { tone(520, 520, 0.09, "sine", 0.2); setTimeout(() => tone(660, 660, 0.09, "sine", 0.2), 90); setTimeout(() => tone(990, 990, 0.18, "sine", 0.22), 180); },
     over: () => { tone(300, 60, 0.7, "sawtooth", 0.3); },
     whoosh: () => tone(600, 140, 0.18, "sawtooth", 0.08),
+    chime: () => { tone(660, 660, 0.12, "sine", 0.16); setTimeout(() => tone(880, 880, 0.1, "sine", 0.14), 90); setTimeout(() => tone(1320, 1320, 0.22, "sine", 0.12), 180); },
     splat: () => { tone(320, 60, 0.12, "sine", 0.25); tone(700, 120, 0.08, "triangle", 0.15); },
-    sad: () => { tone(240, 70, 0.45, "sawtooth", 0.2); tone(120, 50, 0.5, "triangle", 0.15); }
+    sad: () => { tone(240, 70, 0.45, "sawtooth", 0.2); tone(120, 50, 0.5, "triangle", 0.15); },
+    scream: () => {
+      const ac = audio();
+      if (!ac) return;
+      const t0 = ac.currentTime;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      const lfo = ac.createOscillator();
+      const lfoGain = ac.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(480, t0);
+      osc.frequency.linearRampToValueAtTime(860, t0 + 0.14);
+      osc.frequency.setValueAtTime(860, t0 + 0.3);
+      osc.frequency.linearRampToValueAtTime(300, t0 + 0.6);
+      lfo.type = "sine";
+      lfo.frequency.value = 9;
+      lfoGain.gain.value = 40;
+      lfo.connect(lfoGain).connect(osc.frequency);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.linearRampToValueAtTime(0.14, t0 + 0.08);
+      gain.gain.setValueAtTime(0.14, t0 + 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.65);
+      osc.connect(gain).connect(ac.destination);
+      osc.start(t0);
+      lfo.start(t0);
+      osc.stop(t0 + 0.7);
+      lfo.stop(t0 + 0.7);
+    }
   };
 
   function pianoChord(vol) {
@@ -277,10 +307,10 @@
 
   const keys = { left: false, right: false };
 
-  const garb = { cheerT: 0, worryT: 0, bubble: null, bubbleT: 0 };
+  const garb = { cheerT: 0, worryT: 0, screamT: 0, screamCd: 0, bubble: null, bubbleT: 0 };
   const birds = [];
   let birdTimer = 4000;
-  const hobo = { peekT: 0, nextPeek: 8000 };
+  const hobo = { mode: "down", timer: 5000, x: 46, dir: 1, phase: 0 };
 
   const CHEERS = ["NICE!", "ECO!", "GET IN THERE!", "SMASH IT!", "CLEAN SWEEP!", "THAT'S THE STUFF!"];
 
@@ -300,8 +330,7 @@
     burst(x, 688, "#8d6e63", 12, 3);
     state.floats.push({ x, y: 630, text: "DROPPED!", life: 1100, color: "#d84343" });
     garb.worryT = 2000;
-    garb.bubble = state.lives > 0 ? "WATCH IT!" : "WE'RE DONE...";
-    garb.bubbleT = 2000;
+    garbScream(state.lives > 0 ? "MY LAWN!" : "WE'RE DOOOomed...");
     if (state.lives <= 0) {
       gameOver("Three items dropped on the ground!");
     }
@@ -337,6 +366,8 @@
   function buildWorld() {
     engine = Engine.create();
     engine.gravity.y = GRAVITY;
+    engine.positionIterations = 8;
+    engine.velocityIterations = 6;
     const opts = { isStatic: true, friction: 0.6, restitution: 0.02, label: "bin" };
     const midY = (BIN.rim + BIN.bottom) / 2;
     const groundOpts = { isStatic: true, friction: 0.8, restitution: 0.01, label: "ground" };
@@ -381,9 +412,14 @@
             }
           }
           if (t.def.fragile && !t.squished) {
-            squishFood(body, 1.7, 0.32, "SPLAT!");
+            crackEgg(body);
           } else if (t.def.food && !t.squished && rel >= SQUISH_SPEED) {
             squishFood(body, 1.4, 0.55, "SPLAT!");
+          } else if (t.def.mat === "glass" && !t.debris && rel >= 3.5) {
+            t.pendingShatter = true;
+          }
+          if (!t.debris && !t.def.food && rel > 6 && t.def.w * t.def.h > 2600 && garb.screamCd <= 0 && Math.random() < 0.35) {
+            garbScream();
           }
         }
       }
@@ -450,8 +486,8 @@
       density: 0.0016 + (def.w * def.h) / 900000
     };
     const body = def.circle
-      ? Bodies.circle(x, y, def.w / 2, opts)
-      : Bodies.rectangle(x, y, def.w, def.h, { ...opts, chamfer: { radius: 4 } });
+      ? Bodies.circle(x, y, def.w / 2, { ...opts, restitution: 0.22 })
+      : Bodies.rectangle(x, y, def.w, def.h, { ...opts, restitution: 0.22, chamfer: { radius: 4 } });
     body.plugin.trash = {
       def,
       gen: 0,
@@ -567,7 +603,7 @@
         pos.y - 6,
         Math.max(10, w),
         Math.max(10, h),
-        { friction: 0.5, restitution: 0.15, density: 0.0014, chamfer: { radius: 3 } }
+        { friction: 0.5, restitution: 0.28, density: 0.0014, chamfer: { radius: 3 } }
       );
       body.plugin.trash = {
         def,
@@ -592,6 +628,38 @@
       Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.3);
       Composite.add(engine.world, body);
     }
+  }
+
+  function crackEgg(body) {
+    const t = body.plugin.trash;
+    t.squished = true;
+    t.cracked = true;
+    Body.scale(body, 1.5, 0.42);
+    sfx.splat();
+    sfx.hit();
+    for (let i = 0; i < 18; i++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+      const v = 1 + Math.random() * 3;
+      state.particles.push({
+        x: body.position.x + (Math.random() - 0.5) * 14,
+        y: body.position.y,
+        vx: Math.cos(a) * v * 0.7,
+        vy: Math.abs(Math.sin(a)) * v * 0.5,
+        life: 700 + Math.random() * 500,
+        color: Math.random() < 0.75 ? "#ffd54f" : "#fff8e1",
+        r: 2 + Math.random() * 3.5
+      });
+    }
+    addScore(25, body.position.x, body.position.y - 14, "#ffd54f");
+    state.floats.push({ x: body.position.x, y: body.position.y - 30, text: "CRACK!", life: 700, color: "#ffd54f" });
+  }
+
+  function garbScream(text) {
+    garb.screamT = 1200;
+    garb.screamCd = 5000;
+    garb.bubble = text || "AAAAH!";
+    garb.bubbleT = 1400;
+    sfx.scream();
   }
 
   function squishFood(body, sx, sy, label) {
@@ -658,6 +726,7 @@
     const pos = { ...bomb.position };
     removeBody(bomb);
     sfx.boom();
+    if (garb.screamCd <= 0) garbScream();
     state.shake = 18;
     burst(pos.x, pos.y, "#ffb347", 26, 6);
     burst(pos.x, pos.y, "#ff5d5d", 18, 4);
@@ -694,12 +763,16 @@
     const active = state.active;
     if (active && active.plugin.trash && !active.plugin.trash.landed) {
       const t = active.plugin.trash;
-      const vx = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
-      if (t.slammed) {
-        Body.setVelocity(active, { x: vx * 2, y: Math.max(active.velocity.y, SLAM_VELOCITY * 0.8) });
-      } else {
-        Body.setVelocity(active, { x: vx * 4.4, y: Math.min(active.velocity.y, FALL_CAP) });
-      }
+      const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+      const targetX = dir * 4.4;
+      const nextX = t.slammed
+        ? active.velocity.x + (dir * 2 - active.velocity.x) * 0.1
+        : active.velocity.x + (targetX - active.velocity.x) * (dir ? 0.16 : 0.03);
+      const capY = t.slammed ? SLAM_VELOCITY : FALL_CAP;
+      Body.setVelocity(active, {
+        x: nextX,
+        y: t.slammed ? Math.max(active.velocity.y, SLAM_VELOCITY * 0.8) : Math.min(active.velocity.y, capY)
+      });
       if (active.position.x < 26) Body.setPosition(active, { x: 26, y: active.position.y });
       if (active.position.x > W - 26) Body.setPosition(active, { x: W - 26, y: active.position.y });
     }
@@ -714,6 +787,12 @@
       t.settled = t.still > 35;
 
       if (t.hitFlash > 0) t.hitFlash -= dt;
+
+      if (t.pendingShatter) {
+        t.pendingShatter = false;
+        breakBody(body);
+        continue;
+      }
 
       if (t.bomb && t.fuse !== 0) {
         t.fuse -= dt;
@@ -750,6 +829,7 @@
 
     if (danger) {
       state.dangerMs += dt;
+      if (state.dangerMs > 1000 && garb.screamCd <= 0) garbScream("IT'S GOTTA' BLOW!");
       if (state.dangerMs >= OVERFLOW_LIMIT_MS) {
         gameOver();
         return;
@@ -799,14 +879,28 @@
 
     garb.cheerT = Math.max(0, garb.cheerT - dt);
     garb.worryT = Math.max(0, garb.worryT - dt);
+    garb.screamT = Math.max(0, garb.screamT - dt);
+    garb.screamCd = Math.max(0, garb.screamCd - dt);
     garb.bubbleT = Math.max(0, garb.bubbleT - dt);
-    hobo.peekT = Math.max(0, hobo.peekT - dt);
-    if (hobo.peekT === 0) {
-      hobo.nextPeek -= dt;
-      if (hobo.nextPeek <= 0) {
-        hobo.peekT = 2600;
-        hobo.nextPeek = 9000 + Math.random() * 8000;
+
+    hobo.timer -= dt;
+    if (hobo.mode === "down" && hobo.timer <= 0) {
+      hobo.mode = "rise";
+      hobo.timer = 500;
+    } else if (hobo.mode === "rise" && hobo.timer <= 0) {
+      hobo.mode = "walk";
+    } else if (hobo.mode === "walk") {
+      hobo.phase += dt;
+      hobo.x += hobo.dir * 0.055 * dt;
+      const target = hobo.dir > 0 ? W - 50 : 50;
+      if ((hobo.dir > 0 && hobo.x >= target) || (hobo.dir < 0 && hobo.x <= target)) {
+        hobo.mode = "bend";
+        hobo.timer = 500;
       }
+    } else if (hobo.mode === "bend" && hobo.timer <= 0) {
+      hobo.mode = "down";
+      hobo.timer = 6000 + Math.random() * 8000;
+      hobo.dir *= -1;
     }
 
     birdTimer -= dt;
@@ -878,8 +972,11 @@
     garb.worryT = 0;
     garb.bubbleT = 0;
     garb.bubble = null;
-    hobo.peekT = 0;
-    hobo.nextPeek = 8000;
+    hobo.mode = "down";
+    hobo.timer = 4000;
+    hobo.x = 46;
+    hobo.dir = 1;
+    hobo.phase = 0;
     birdTimer = 4000;
     el.overlay.classList.remove("visible");
     el.overlayHelp.style.display = "";
@@ -1018,66 +1115,65 @@
     ctx.fill();
   }
 
-  function drawFence() {
-    ctx.fillStyle = "#9a958c";
-    ctx.fillRect(4, 598, 86, 56);
-    ctx.strokeStyle = "#7b766d";
-    ctx.lineWidth = 2;
-    for (let row = 0; row < 3; row++) {
-      const y = 612 + row * 15;
-      ctx.beginPath();
-      ctx.moveTo(4, y);
-      ctx.lineTo(90, y);
-      ctx.stroke();
-      for (let i = 0; i < 4; i++) {
-        const x = 14 + i * 20 + (row % 2 ? 10 : 0);
-        if (x > 86) continue;
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y - 15);
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = "#8a857c";
-    ctx.fillRect(2, 592, 90, 8);
-  }
-
   function drawHobo() {
-    drawFence();
-    if (hobo.peekT <= 0) return;
-    const p = 1 - hobo.peekT / 2600;
-    const rise = p < 0.18 ? p / 0.18 : p > 0.82 ? (1 - p) / 0.18 : 1;
-    const hx = 46;
-    const hy = 640 - rise * 46;
+    if (hobo.mode === "down") return;
+    let drop = 0;
+    if (hobo.mode === "rise") drop = 90 * (hobo.timer / 500);
+    else if (hobo.mode === "bend") drop = 90 * (1 - hobo.timer / 500);
+    const walking = hobo.mode === "walk";
+    const bob = walking ? Math.abs(Math.sin(hobo.phase / 90)) * 4 : 0;
+    const hx = hobo.x;
+    const hy = 500 - 165 + drop - bob;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, WALL_TOP);
+    ctx.clip();
+    ctx.fillStyle = "#6d5443";
+    ctx.beginPath();
+    ctx.roundRect(hx - 13, hy + 34, 26, 60, 8);
+    ctx.fill();
+    ctx.fillStyle = "#4e3b2e";
+    ctx.fillRect(hx - 13, hy + 62, 26, 6);
+    ctx.fillStyle = "#c9b18c";
+    const swing = walking ? Math.sin(hobo.phase / 90) * 7 : 0;
+    ctx.fillRect(hx - 9 + swing, hy + 92, 7, 42);
+    ctx.fillRect(hx + 2 - swing, hy + 92, 7, 42);
+    ctx.fillStyle = "#3e2f23";
+    ctx.fillRect(hx - 12 + swing, hy + 132, 12, 6);
+    ctx.fillRect(hx + 1 - swing, hy + 132, 12, 6);
+    ctx.strokeStyle = "#f0c8a0";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(hx - 11, hy + 42);
+    ctx.lineTo(hx - 17 - swing * 0.5, hy + 68);
+    ctx.moveTo(hx + 11, hy + 42);
+    ctx.lineTo(hx + 17 + swing * 0.5, hy + 68);
+    ctx.stroke();
+    ctx.lineCap = "butt";
     ctx.fillStyle = "#f0c8a0";
     ctx.beginPath();
-    ctx.arc(hx, hy, 13, 0, Math.PI * 2);
+    ctx.arc(hx, hy + 18, 13, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#8d6e63";
     ctx.beginPath();
-    ctx.arc(hx, hy + 7, 9, 0, Math.PI);
+    ctx.arc(hx, hy + 25, 9, 0, Math.PI);
     ctx.fill();
     ctx.fillStyle = "#5d4037";
     ctx.beginPath();
-    ctx.ellipse(hx, hy - 9, 14, 6, 0, Math.PI, 0);
+    ctx.ellipse(hx, hy + 8, 14, 6, 0, Math.PI, 0);
     ctx.fill();
-    ctx.fillRect(hx - 18, hy - 11, 10, 4);
+    ctx.fillRect(hx + (hobo.dir > 0 ? 4 : -18), hy + 5, 14, 4);
     ctx.fillStyle = "#3e2723";
     ctx.beginPath();
-    ctx.arc(hx - 4.5, hy - 1, 1.6, 0, Math.PI * 2);
-    ctx.arc(hx + 4.5, hy - 1, 1.6, 0, Math.PI * 2);
+    ctx.arc(hx - 4.5, hy + 17, 1.6, 0, Math.PI * 2);
+    ctx.arc(hx + 4.5, hy + 17, 1.6, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#f0c8a0";
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(hx - 16, 606);
-    ctx.lineTo(hx - 10, 596 + (1 - rise) * 10);
-    ctx.moveTo(hx + 16, 606);
-    ctx.lineTo(hx + 10, 596 + (1 - rise) * 10);
-    ctx.stroke();
+    ctx.restore();
   }
 
   function drawGarb() {
+    const screaming = garb.screamT > 0;
     const cheering = garb.cheerT > 0;
     const worried = garb.worryT > 0;
     const bob = Math.sin(state.clock / 320) * 2;
@@ -1103,16 +1199,44 @@
     ctx.arc(gx, gy - 74, 12, Math.PI, 0);
     ctx.fill();
     ctx.fillRect(gx - 16, gy - 76, 20, 4);
-    ctx.fillStyle = "#3e2723";
+    const ex = gx - 4.5;
+    const ey = gy - 69;
+    const tx = state.active ? state.active.position.x : 240;
+    const ty = state.active ? state.active.position.y : 600;
+    const da = Math.atan2(ty - ey, tx - ex);
+    const px = Math.cos(da) * 2.6;
+    const py = Math.sin(da) * 2.6;
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(gx - 4.5, gy - 69, 1.7, 0, Math.PI * 2);
-    ctx.arc(gx + 4.5, gy - 69, 1.7, 0, Math.PI * 2);
+    ctx.arc(ex - 2.4, ey, 2.6, 0, Math.PI * 2);
+    ctx.arc(ex + 6.4, ey, 2.6, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = cheering || worried ? "#f0c8a0" : "#f0c8a0";
+    ctx.fillStyle = "#1a1a1a";
+    ctx.beginPath();
+    ctx.arc(ex - 2.4 + px, ey + py, 1.4, 0, Math.PI * 2);
+    ctx.arc(ex + 6.4 + px, ey + py, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    if (screaming) {
+      ctx.fillStyle = "#7c2b1e";
+      ctx.beginPath();
+      ctx.ellipse(ex + 2, ey + 7.5, 3.4, 4.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = "#f0c8a0";
     ctx.lineWidth = 6;
     ctx.lineCap = "round";
     ctx.beginPath();
-    if (cheering) {
+    if (screaming) {
+      ctx.moveTo(gx - 16, gy - 52);
+      ctx.lineTo(gx - 24, gy - 80);
+      ctx.moveTo(gx + 16, gy - 52);
+      ctx.lineTo(gx + 24, gy - 80);
+      ctx.fillStyle = "#f0c8a0";
+      ctx.beginPath();
+      ctx.arc(gx - 24, gy - 80, 4, 0, Math.PI * 2);
+      ctx.arc(gx + 24, gy - 80, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (cheering) {
       ctx.moveTo(gx - 16, gy - 52);
       ctx.lineTo(gx - 26, gy - 84);
       ctx.moveTo(gx + 16, gy - 52);
@@ -1134,11 +1258,11 @@
     if (garb.bubbleT > 0 && garb.bubble) {
       const a = Math.min(1, garb.bubbleT / 300);
       ctx.globalAlpha = a;
-      ctx.font = "bold 13px 'Trebuchet MS', sans-serif";
+      ctx.font = screaming ? "bold 15px 'Trebuchet MS', sans-serif" : "bold 13px 'Trebuchet MS', sans-serif";
       const tw = ctx.measureText(garb.bubble).width;
       const bx = Math.min(gx + 14, W - tw - 26);
       const by = gy - 118;
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = screaming ? "#b3261e" : "#ffffff";
       ctx.beginPath();
       ctx.roundRect(bx, by, tw + 18, 24, 8);
       ctx.fill();
@@ -1147,7 +1271,7 @@
       ctx.lineTo(bx + 2, by + 34);
       ctx.lineTo(bx + 18, by + 24);
       ctx.fill();
-      ctx.fillStyle = "#263238";
+      ctx.fillStyle = screaming ? "#ffffff" : "#263238";
       ctx.textAlign = "left";
       ctx.fillText(garb.bubble, bx + 9, by + 16);
       ctx.textAlign = "center";
@@ -1179,7 +1303,7 @@
   }
 
   function drawCracks(body, t) {
-    const damage = 1 - t.hp / t.def.hp;
+    const damage = t.cracked ? 1 : 1 - t.hp / t.def.hp;
     if (damage <= 0) return;
     const n = Math.ceil(damage * 4);
     const rand = srand(body.id * 7 + 13);
@@ -1322,8 +1446,8 @@
       ctx.globalAlpha = 1;
       ctx.restore();
       if (t.squished) {
-        ctx.fillStyle = t.def.tint;
-        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = t.cracked ? "#ffd54f" : t.def.tint;
+        ctx.globalAlpha = t.cracked ? 0.55 : 0.35;
         ctx.beginPath();
         ctx.ellipse(body.position.x, body.position.y + bh * 0.32, bw * 0.62, bh * 0.2, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -1442,5 +1566,5 @@
   };
   bgLoader.src = "assets/bg.jpg";
 
-  window.__tp = { getState: () => state, startGame, smashAction, bodies: () => trashBodies(), defs: TRASH, spawn: spawnItem, hit: trySmash, bin: BIN, _sfx: sfx, _matHit: matHit, _matBreak: matBreak };
+  window.__tp = { getState: () => state, startGame, smashAction, bodies: () => trashBodies(), defs: TRASH, spawn: spawnItem, hit: trySmash, bin: BIN, _sfx: sfx, _matHit: matHit, _matBreak: matBreak, hobo, garb, crackEgg };
 })();
