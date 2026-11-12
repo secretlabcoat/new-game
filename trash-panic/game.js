@@ -14,29 +14,32 @@
   const FALL_CAP = 3.4;
   const SLAM_CAP = 8;
   const SQUISH_SPEED = 3;
+  const SLAM_VELOCITY = 12;
+  const COMPACT_INTERVAL = 1200;
+  const BIN_UPGRADES = [4000, 12000, 25000, 45000];
 
   const TRASH = [
-    { id: "banana", emoji: "🍌", w: 46, h: 26, food: true, hp: 1, pts: 80, minLevel: 1, weight: 8, smash: [2, 0.55], tint: "#e8d44d" },
-    { id: "apple", emoji: "🍎", w: 34, h: 34, food: true, hp: 1, pts: 90, minLevel: 1, weight: 8, smash: [2, 0.55], tint: "#d9584a" },
-    { id: "egg", emoji: "🥚", w: 28, h: 34, food: true, hp: 1, pts: 70, minLevel: 1, weight: 7, smash: [2, 0.5], tint: "#f2e9d8" },
-    { id: "fish", emoji: "🐟", w: 54, h: 24, food: true, hp: 1, pts: 100, minLevel: 1, weight: 6, smash: [2, 0.55], tint: "#8fb8c9" },
-    { id: "donut", emoji: "🍩", w: 36, h: 36, food: true, hp: 1, pts: 90, minLevel: 1, weight: 6, smash: [2, 0.5], tint: "#d9a066" },
-    { id: "cabbage", emoji: "🥬", w: 44, h: 40, food: true, hp: 1, pts: 110, minLevel: 1, weight: 5, smash: [3, 0.5], tint: "#9cc069" },
-    { id: "chicken", emoji: "🍗", w: 44, h: 32, food: true, hp: 1, pts: 110, minLevel: 2, weight: 6, smash: [2, 0.5], tint: "#c98a4b" },
-    { id: "pizza", emoji: "🍕", w: 50, h: 34, food: true, hp: 1, pts: 120, minLevel: 2, weight: 5, smash: [3, 0.5], tint: "#e0b04a" },
-    { id: "watermelon", emoji: "🍉", w: 52, h: 44, food: true, hp: 2, pts: 180, minLevel: 2, weight: 5, smash: [3, 0.5], tint: "#5fae5f" },
-    { id: "pumpkin", emoji: "🎃", w: 48, h: 44, food: true, hp: 2, pts: 200, minLevel: 3, weight: 4, smash: [3, 0.5], tint: "#e0862f" },
-    { id: "can", emoji: "🥫", w: 30, h: 44, hp: 1, pts: 150, minLevel: 1, weight: 8, smash: [2, 0.55], tint: "#9aa3ab" },
-    { id: "bottle", emoji: "🍾", w: 30, h: 58, hp: 2, pts: 200, minLevel: 1, weight: 7, smash: [2, 0.5], tint: "#7ba088" },
-    { id: "boot", emoji: "👢", w: 46, h: 46, hp: 2, pts: 250, minLevel: 2, weight: 6, smash: [3, 0.5], tint: "#a8623f" },
-    { id: "battery", emoji: "🔋", w: 34, h: 48, hp: 2, pts: 220, minLevel: 2, weight: 5, smash: [2, 0.5], tint: "#5f8a5f" },
-    { id: "tire", emoji: "⭕", w: 58, h: 58, circle: true, hp: 3, pts: 300, minLevel: 2, weight: 5, smash: [2, 0.6], tint: "#4d5459" },
-    { id: "radio", emoji: "📻", w: 58, h: 42, hp: 3, pts: 350, minLevel: 3, weight: 4, smash: [3, 0.5], tint: "#a06b52" },
-    { id: "chair", emoji: "🪑", w: 50, h: 62, hp: 3, pts: 400, minLevel: 3, weight: 4, smash: [3, 0.5], tint: "#b0885a" },
-    { id: "tv", emoji: "📺", w: 78, h: 62, hp: 4, pts: 550, minLevel: 3, weight: 4, smash: [3, 0.5], tint: "#6d757c" },
-    { id: "safe", emoji: "🧰", w: 66, h: 66, hp: 6, pts: 900, minLevel: 4, weight: 3, smash: [4, 0.45], tint: "#5c666e" },
-    { id: "piano", emoji: "🎹", w: 82, h: 50, hp: 5, pts: 800, minLevel: 4, weight: 2, smash: [4, 0.45], tint: "#3d4147" },
-    { id: "bomb", emoji: "💣", w: 38, h: 38, circle: true, bomb: true, hp: 1, pts: 400, minLevel: 1, weight: 4, smash: null, tint: "#3d4147" }
+    { id: "banana", emoji: "🍌", w: 46, h: 26, food: true, mat: "food", hp: 1, pts: 80, minLevel: 1, weight: 8, smash: [2, 0.55], tint: "#e8d44d" },
+    { id: "apple", emoji: "🍎", w: 34, h: 34, food: true, mat: "food", hp: 1, pts: 90, minLevel: 1, weight: 8, smash: [2, 0.55], tint: "#d9584a" },
+    { id: "egg", emoji: "🥚", w: 28, h: 34, food: true, mat: "food", fragile: true, hp: 1, pts: 70, minLevel: 1, weight: 7, smash: [2, 0.5], tint: "#f2e9d8" },
+    { id: "fish", emoji: "🐟", w: 54, h: 24, food: true, mat: "food", hp: 1, pts: 100, minLevel: 1, weight: 6, smash: [2, 0.55], tint: "#8fb8c9" },
+    { id: "donut", emoji: "🍩", w: 36, h: 36, food: true, mat: "food", hp: 1, pts: 90, minLevel: 1, weight: 6, smash: [2, 0.5], tint: "#d9a066" },
+    { id: "cabbage", emoji: "🥬", w: 44, h: 40, food: true, mat: "food", hp: 1, pts: 110, minLevel: 1, weight: 5, smash: [3, 0.5], tint: "#9cc069" },
+    { id: "chicken", emoji: "🍗", w: 44, h: 32, food: true, mat: "food", hp: 1, pts: 110, minLevel: 2, weight: 6, smash: [2, 0.5], tint: "#c98a4b" },
+    { id: "pizza", emoji: "🍕", w: 50, h: 34, food: true, mat: "food", hp: 1, pts: 120, minLevel: 2, weight: 5, smash: [3, 0.5], tint: "#e0b04a" },
+    { id: "watermelon", emoji: "🍉", w: 52, h: 44, food: true, mat: "food", hp: 2, pts: 180, minLevel: 2, weight: 5, smash: [3, 0.5], tint: "#5fae5f" },
+    { id: "pumpkin", emoji: "🎃", w: 48, h: 44, food: true, mat: "food", hp: 2, pts: 200, minLevel: 3, weight: 4, smash: [3, 0.5], tint: "#e0862f" },
+    { id: "can", emoji: "🥫", w: 30, h: 44, mat: "metal", hp: 1, pts: 150, minLevel: 1, weight: 8, smash: [2, 0.55], tint: "#9aa3ab" },
+    { id: "bottle", emoji: "🍾", w: 30, h: 58, mat: "glass", hp: 2, pts: 200, minLevel: 1, weight: 7, smash: [2, 0.5], tint: "#7ba088" },
+    { id: "boot", emoji: "👢", w: 46, h: 46, mat: "leather", hp: 2, pts: 250, minLevel: 2, weight: 6, smash: [3, 0.5], tint: "#a8623f" },
+    { id: "battery", emoji: "🔋", w: 34, h: 48, mat: "metal", hp: 2, pts: 220, minLevel: 2, weight: 5, smash: [2, 0.5], tint: "#5f8a5f" },
+    { id: "tire", emoji: "⭕", w: 58, h: 58, circle: true, mat: "rubber", hp: 3, pts: 300, minLevel: 2, weight: 5, smash: [2, 0.6], tint: "#4d5459" },
+    { id: "radio", emoji: "📻", w: 58, h: 42, mat: "elec", hp: 3, pts: 350, minLevel: 3, weight: 4, smash: [3, 0.5], tint: "#a06b52" },
+    { id: "chair", emoji: "🪑", w: 50, h: 62, mat: "wood", hp: 3, pts: 400, minLevel: 3, weight: 4, smash: [3, 0.5], tint: "#b0885a" },
+    { id: "tv", emoji: "📺", w: 78, h: 62, mat: "elec", hp: 4, pts: 550, minLevel: 3, weight: 4, smash: [3, 0.5], tint: "#6d757c" },
+    { id: "safe", emoji: "🧰", w: 66, h: 66, mat: "metal", hp: 6, pts: 900, minLevel: 4, weight: 3, smash: [4, 0.45], tint: "#5c666e" },
+    { id: "piano", emoji: "🎹", w: 82, h: 50, mat: "piano", hp: 5, pts: 800, minLevel: 4, weight: 2, smash: [4, 0.45], tint: "#3d4147" },
+    { id: "bomb", emoji: "💣", w: 38, h: 38, circle: true, bomb: true, mat: "metal", hp: 1, pts: 400, minLevel: 1, weight: 4, smash: null, tint: "#3d4147" }
   ];
 
   const CLOUDS = [
@@ -62,6 +65,9 @@
   let engine = null;
   let state = null;
   let bgCanvas = null;
+  let bgImage = null;
+  let binWalls = [];
+  const music = { on: true, nextTime: 0, chordIdx: 0, stepIdx: 0, birdAt: 0 };
   let bestScore = Number(localStorage.getItem("trashpanic.best") || 0);
   el.best.textContent = bestScore;
 
@@ -99,8 +105,159 @@
     boom: () => { tone(120, 25, 0.5, "sawtooth", 0.4); tone(70, 20, 0.6, "triangle", 0.35); },
     fuse: () => tone(1300, 1300, 0.04, "sine", 0.12),
     levelup: () => { tone(520, 520, 0.09, "sine", 0.2); setTimeout(() => tone(660, 660, 0.09, "sine", 0.2), 90); setTimeout(() => tone(990, 990, 0.18, "sine", 0.22), 180); },
-    over: () => { tone(300, 60, 0.7, "sawtooth", 0.3); }
+    over: () => { tone(300, 60, 0.7, "sawtooth", 0.3); },
+    whoosh: () => tone(600, 140, 0.18, "sawtooth", 0.08),
+    splat: () => { tone(320, 60, 0.12, "sine", 0.25); tone(700, 120, 0.08, "triangle", 0.15); }
   };
+
+  function pianoChord(vol) {
+    const freqs = [261.63, 329.63, 392.0, 523.25];
+    for (const f of freqs) {
+      const ac = audio();
+      if (!ac) return;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = "sine";
+      osc.frequency.value = f;
+      gain.gain.setValueAtTime(vol || 0.05, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.9);
+      osc.connect(gain).connect(ac.destination);
+      osc.start();
+      osc.stop(ac.currentTime + 1);
+    }
+  }
+
+  function matHit(def, strength) {
+    const vol = Math.min(0.28, 0.07 + strength * 0.018);
+    switch (def.mat) {
+      case "metal": tone(650 + Math.random() * 350, 280, 0.13, "square", vol * 0.8); break;
+      case "glass": tone(1350, 900, 0.09, "sine", vol * 0.7); tone(1750, 1150, 0.07, "sine", vol * 0.5); break;
+      case "wood": tone(195, 110, 0.08, "triangle", vol); break;
+      case "rubber": tone(175, 85, 0.16, "sine", vol); break;
+      case "elec": tone(115, 95, 0.1, "sawtooth", vol * 0.5); break;
+      case "leather": tone(125, 60, 0.09, "triangle", vol * 0.9); break;
+      case "piano": pianoChord(Math.min(0.09, vol * 0.5)); break;
+      case "food": tone(230 + Math.random() * 90, 70, 0.14, "sine", vol); break;
+      default: tone(150, 45, 0.09, "triangle", vol);
+    }
+  }
+
+  function matBreak(def) {
+    switch (def.mat) {
+      case "glass":
+        for (let i = 0; i < 5; i++) {
+          setTimeout(() => tone(2300 - i * 260 + Math.random() * 200, 900, 0.06, "sine", 0.12), i * 35);
+        }
+        break;
+      case "metal":
+        tone(820, 200, 0.2, "square", 0.2);
+        tone(410, 90, 0.28, "triangle", 0.16);
+        break;
+      case "wood":
+        tone(260, 90, 0.1, "square", 0.18);
+        setTimeout(() => tone(180, 70, 0.14, "triangle", 0.16), 60);
+        break;
+      case "elec":
+        tone(240, 28, 0.4, "sawtooth", 0.16);
+        break;
+      case "rubber":
+        tone(320, 70, 0.18, "sine", 0.2);
+        break;
+      case "piano":
+        pianoChord(0.08);
+        setTimeout(() => tone(90, 40, 0.3, "sawtooth", 0.14), 40);
+        break;
+      case "food":
+        sfx.squish();
+        break;
+      default:
+        sfx.break();
+    }
+  }
+
+  const CHORDS = [
+    [261.63, 329.63, 392.0, 493.88],
+    [220.0, 261.63, 329.63, 392.0],
+    [174.61, 220.0, 261.63, 329.63],
+    [196.0, 246.94, 293.66, 349.23]
+  ];
+
+  function padNote(freq, at, dur) {
+    const ac = audio();
+    if (!ac) return;
+    for (const [type, detune, vol] of [["sine", 0, 0.022], ["triangle", 4, 0.012]]) {
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      osc.detune.value = detune;
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.linearRampToValueAtTime(vol, at + 1.1);
+      gain.gain.setValueAtTime(vol, at + dur - 1.2);
+      gain.gain.linearRampToValueAtTime(0.0001, at + dur);
+      osc.connect(gain).connect(ac.destination);
+      osc.start(at);
+      osc.stop(at + dur + 0.1);
+    }
+  }
+
+  function pluck(freq, at) {
+    const ac = audio();
+    if (!ac) return;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.035, at);
+    gain.gain.exponentialRampToValueAtTime(0.001, at + 0.9);
+    osc.connect(gain).connect(ac.destination);
+    osc.start(at);
+    osc.stop(at + 1);
+  }
+
+  function birdChirp(at) {
+    const ac = audio();
+    if (!ac) return;
+    const n = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      const t0 = at + i * 0.12;
+      const f = 2200 + Math.random() * 1400;
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(f, t0);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.7, t0 + 0.09);
+      gain.gain.setValueAtTime(0.018, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.1);
+      osc.connect(gain).connect(ac.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.12);
+    }
+  }
+
+  function scheduleMusic() {
+    const ac = audio();
+    if (!ac || !music.on || state.over) return;
+    if (music.nextTime < ac.currentTime) music.nextTime = ac.currentTime + 0.1;
+    const ahead = ac.currentTime + 0.6;
+    while (music.nextTime < ahead) {
+      const at = music.nextTime;
+      const chord = CHORDS[music.chordIdx % CHORDS.length];
+      if (music.stepIdx % 8 === 0) {
+        for (const f of chord) padNote(f, at, 4.4);
+      }
+      if (music.stepIdx % 2 === 0) {
+        pluck(chord[(Math.floor(music.stepIdx / 2) % chord.length)] * 2, at);
+      }
+      if (at > music.birdAt) {
+        birdChirp(at + 0.3);
+        music.birdAt = at + 7000 + Math.random() * 9000;
+      }
+      music.nextTime = at + 0.5;
+      music.stepIdx++;
+      if (music.stepIdx % 8 === 0) music.chordIdx++;
+    }
+  }
 
   const keys = { left: false, right: false, down: false };
 
@@ -121,6 +278,8 @@
       combo: 0,
       comboUntil: 0,
       clock: 0,
+      binTier: 0,
+      compactTimer: 0,
       shake: 0,
       particles: [],
       floats: [],
@@ -133,10 +292,13 @@
     engine.gravity.y = GRAVITY;
     const opts = { isStatic: true, friction: 0.6, restitution: 0.02, label: "bin" };
     const midY = (BIN.rim + BIN.bottom) / 2;
-    Composite.add(engine.world, [
+    binWalls = [
       Bodies.rectangle(BIN.left - BIN.wall / 2, midY, BIN.wall, BIN.bottom - BIN.rim, opts),
       Bodies.rectangle(BIN.right + BIN.wall / 2, midY, BIN.wall, BIN.bottom - BIN.rim, opts),
-      Bodies.rectangle((BIN.left + BIN.right) / 2, BIN.bottom + BIN.wall / 2, BIN.right - BIN.left + BIN.wall * 2, BIN.wall, opts),
+      Bodies.rectangle((BIN.left + BIN.right) / 2, BIN.bottom + BIN.wall / 2, BIN.right - BIN.left + BIN.wall * 2, BIN.wall, opts)
+    ];
+    Composite.add(engine.world, [
+      ...binWalls,
       Bodies.rectangle(-20, H / 2, 40, H * 2, opts),
       Bodies.rectangle(W + 20, H / 2, 40, H * 2, opts)
     ]);
@@ -146,7 +308,13 @@
         const a = pair.bodyA;
         const b = pair.bodyB;
         const rel = Vector.magnitude(Vector.sub(a.velocity, b.velocity));
-        if (rel > 3) sfx.thud();
+        const trashA = a.plugin && a.plugin.trash;
+        const trashB = b.plugin && b.plugin.trash;
+        const striker = rel > 3 ? (trashA && trashB ? (Vector.magnitude(a.velocity) > Vector.magnitude(b.velocity) ? trashA : trashB) : (trashA || trashB)) : null;
+        if (rel > 3) {
+          if (striker) matHit(striker.def, rel);
+          else sfx.thud();
+        }
         for (const body of [a, b]) {
           const t = body.plugin && body.plugin.trash;
           if (!t) continue;
@@ -157,7 +325,11 @@
               t.fuseBeep = 0;
             }
           }
-          if (t.def.food && !t.squished && rel >= SQUISH_SPEED) squishFood(body);
+          if (t.def.fragile && !t.squished) {
+            squishFood(body, 1.7, 0.32, "SPLAT!");
+          } else if (t.def.food && !t.squished && rel >= SQUISH_SPEED) {
+            squishFood(body, 1.4, 0.55, "SPLAT!");
+          }
         }
       }
     });
@@ -165,6 +337,39 @@
 
   function trashBodies() {
     return Composite.allBodies(engine.world).filter((b) => b.plugin && b.plugin.trash);
+  }
+
+  function rebuildBinWalls() {
+    const opts = { isStatic: true, friction: 0.6, restitution: 0.02, label: "bin" };
+    const midY = (BIN.rim + BIN.bottom) / 2;
+    for (const wall of binWalls) Composite.remove(engine.world, wall);
+    binWalls = [
+      Bodies.rectangle(BIN.left - BIN.wall / 2, midY, BIN.wall, BIN.bottom - BIN.rim, opts),
+      Bodies.rectangle(BIN.right + BIN.wall / 2, midY, BIN.wall, BIN.bottom - BIN.rim, opts),
+      Bodies.rectangle((BIN.left + BIN.right) / 2, BIN.bottom + BIN.wall / 2, BIN.right - BIN.left + BIN.wall * 2, BIN.wall, opts)
+    ];
+    Composite.add(engine.world, binWalls);
+  }
+
+  function checkBinUpgrade() {
+    if (state.binTier >= BIN_UPGRADES.length) return;
+    if (state.score < BIN_UPGRADES[state.binTier]) return;
+    state.binTier += 1;
+    BIN.left -= 20;
+    BIN.right += 20;
+    rebuildBinWalls();
+    banner("BIN UPGRADED!", "#ff8f00");
+    sfx.levelup();
+    burst(W / 2, BIN.rim, "#ffd166", 22, 5);
+  }
+
+  function slamActive() {
+    if (!state || !state.playing || state.paused || state.over) return;
+    const a = state.active;
+    if (!a || !a.plugin.trash || a.plugin.trash.landed) return;
+    a.plugin.trash.slammed = true;
+    Body.setVelocity(a, { x: a.velocity.x, y: SLAM_VELOCITY });
+    sfx.whoosh();
   }
 
   function pickDef() {
@@ -197,6 +402,8 @@
       still: 0,
       settled: false,
       squished: false,
+      slammed: false,
+      compaction: 1,
       hitFlash: 0,
       crumbleLeft: 0,
       fuse: 0,
@@ -306,6 +513,8 @@
         still: 0,
         settled: false,
         squished: t.squished,
+        slammed: false,
+        compaction: 1,
         hitFlash: 0,
         crumbleLeft: Math.min(w, h) < 20 ? 1200 : 2400,
         fuse: 0,
@@ -320,19 +529,20 @@
     }
   }
 
-  function squishFood(body) {
+  function squishFood(body, sx, sy, label) {
     const t = body.plugin.trash;
     t.squished = true;
-    Body.scale(body, 1.4, 0.55);
-    sfx.squish();
+    Body.scale(body, sx || 1.4, sy || 0.55);
+    sfx.splat();
     burst(body.position.x, body.position.y + 8, t.def.tint, 12, 3.5);
+    if (t.def.fragile) burst(body.position.x, body.position.y, "#ffd166", 8, 3);
     addScore(25, body.position.x, body.position.y - 14, t.def.tint);
-    state.floats.push({ x: body.position.x, y: body.position.y - 30, text: "SPLAT!", life: 700, color: t.def.tint });
+    state.floats.push({ x: body.position.x, y: body.position.y - 30, text: label || "SPLAT!", life: 700, color: t.def.tint });
   }
 
   function breakBody(body) {
     const t = body.plugin.trash;
-    sfx.break();
+    matBreak(t.def);
     state.shake = Math.max(state.shake, 6);
     burst(body.position.x, body.position.y, t.def.tint, 14, 4.5);
     addScore(Math.round(t.def.pts * 0.4), body.position.x, body.position.y - 16, t.def.tint);
@@ -418,9 +628,13 @@
 
     const active = state.active;
     if (active && active.plugin.trash && !active.plugin.trash.landed) {
+      const t = active.plugin.trash;
       const vx = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
-      const capY = keys.down ? SLAM_CAP : FALL_CAP;
-      Body.setVelocity(active, { x: vx * 4.4, y: Math.min(active.velocity.y, capY) });
+      if (t.slammed) {
+        Body.setVelocity(active, { x: vx * 2, y: Math.max(active.velocity.y, SLAM_VELOCITY * 0.8) });
+      } else {
+        Body.setVelocity(active, { x: vx * 4.4, y: Math.min(active.velocity.y, FALL_CAP) });
+      }
       const minX = BIN.left + 24;
       const maxX = BIN.right - 24;
       if (active.position.x < minX) Body.setPosition(active, { x: minX, y: active.position.y });
@@ -477,6 +691,32 @@
       state.dangerMs = Math.max(0, state.dangerMs - dt * 1.6);
     }
 
+    checkBinUpgrade();
+
+    state.compactTimer += dt;
+    if (state.compactTimer >= COMPACT_INTERVAL) {
+      state.compactTimer = 0;
+      const list = trashBodies();
+      for (const body of list) {
+        const t = body.plugin.trash;
+        if (!t.settled || body === state.active) continue;
+        let pressure = 0;
+        for (const other of list) {
+          if (other === body || !other.plugin.trash.settled) continue;
+          if (
+            other.bounds.max.y < body.bounds.min.y + 6 &&
+            other.bounds.max.x > body.bounds.min.x &&
+            other.bounds.min.x < body.bounds.max.x
+          ) pressure += 1;
+        }
+        if (pressure === 0) continue;
+        const k = Math.min(pressure, 4) * (t.def.food || t.debris ? 0.011 : 0.004);
+        if (t.compaction - k < 0.55) continue;
+        t.compaction -= k;
+        Body.scale(body, 1 + k * 0.55, 1 - k);
+      }
+    }
+
     if (!state.active && state.clock >= state.nextSpawnAt) {
       spawnNext();
       state.nextSpawnAt = state.clock + 600;
@@ -520,6 +760,8 @@
     if (engine) {
       Events.off(engine);
     }
+    BIN.left = 100;
+    BIN.right = 380;
     buildWorld();
     state = freshState();
     el.score.textContent = "0";
@@ -719,14 +961,19 @@
     if (state && state.shake > 0) {
       ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
     }
-    if (bgCanvas) {
+    if (bgImage) {
+      const scale = Math.max(W / bgImage.width, H / bgImage.height);
+      const dw = bgImage.width * scale;
+      const dh = bgImage.height * scale;
+      ctx.drawImage(bgImage, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    } else if (bgCanvas) {
       ctx.drawImage(bgCanvas, 0, 0);
     } else {
       ctx.fillStyle = "#a8ddf9";
       ctx.fillRect(0, 0, W, H);
     }
 
-    if (state) {
+    if (state && !bgImage) {
       for (const c of CLOUDS) {
         c.x += c.v * 16.7;
         if (c.x > W + 80) c.x = -90;
@@ -738,6 +985,11 @@
       ctx.restore();
       return;
     }
+
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(W / 2, BIN.bottom + 12, (BIN.right - BIN.left) / 2 + 30, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     drawBin();
 
@@ -844,15 +1096,22 @@
     state.clock += dt;
     step(dt);
     draw();
+    scheduleMusic();
   }
 
   document.addEventListener("keydown", (e) => {
     if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = true;
     else if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = true;
-    else if (e.code === "ArrowDown") keys.down = true;
-    else if (e.code === "KeyS" || e.code === "KeyX") {
+    else if (e.code === "ArrowDown") {
+      e.preventDefault();
+      if (!e.repeat) slamActive();
+      return;
+    } else if (e.code === "KeyS" || e.code === "KeyX") {
       e.preventDefault();
       smashAction();
+    } else if (e.code === "KeyM") {
+      music.on = !music.on;
+      banner(music.on ? "♫ MUSIC ON" : "MUSIC OFF", "#5c8bd6");
     } else if (e.code === "KeyP" || e.code === "Escape") {
       if (state && state.playing) {
         state.paused = !state.paused;
@@ -865,7 +1124,6 @@
   document.addEventListener("keyup", (e) => {
     if (e.code === "ArrowLeft" || e.code === "KeyA") keys.left = false;
     else if (e.code === "ArrowRight" || e.code === "KeyD") keys.right = false;
-    else if (e.code === "ArrowDown") keys.down = false;
   });
 
   for (const btn of document.querySelectorAll(".touch-key")) {
@@ -873,15 +1131,14 @@
     const press = (e) => {
       e.preventDefault();
       if (key === "KeyS") smashAction();
+      else if (key === "ArrowDown") slamActive();
       else if (key === "ArrowLeft") keys.left = true;
       else if (key === "ArrowRight") keys.right = true;
-      else if (key === "ArrowDown") keys.down = true;
     };
     const release = (e) => {
       e.preventDefault();
       if (key === "ArrowLeft") keys.left = false;
       else if (key === "ArrowRight") keys.right = false;
-      else if (key === "ArrowDown") keys.down = false;
     };
     btn.addEventListener("pointerdown", press);
     btn.addEventListener("pointerup", release);
@@ -895,5 +1152,11 @@
   state = freshState();
   requestAnimationFrame(loop);
 
-  window.__tp = { getState: () => state, startGame, smashAction, bodies: () => trashBodies(), defs: TRASH, spawn: spawnItem, hit: trySmash };
+  const bgLoader = new Image();
+  bgLoader.onload = () => {
+    bgImage = bgLoader;
+  };
+  bgLoader.src = "assets/bg.jpg";
+
+  window.__tp = { getState: () => state, startGame, smashAction, bodies: () => trashBodies(), defs: TRASH, spawn: spawnItem, hit: trySmash, bin: BIN };
 })();
