@@ -110,6 +110,46 @@
     osc.stop(ac.currentTime + dur + 0.02);
   }
 
+  let noiseBuffer = null;
+  function noise(dur, vol, type, freq, endFreq, q) {
+    const ac = audio();
+    if (!ac) return;
+    if (!noiseBuffer) {
+      noiseBuffer = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.5), ac.sampleRate);
+      const data = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuffer;
+    src.loop = true;
+    const filter = ac.createBiquadFilter();
+    filter.type = type || "bandpass";
+    filter.frequency.setValueAtTime(freq || 1000, ac.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq || freq || 1000), ac.currentTime + dur);
+    filter.Q.value = q || 1;
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(Math.min(0.5, vol * 2.2), ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + dur);
+    src.connect(filter).connect(gain).connect(ac.destination);
+    src.start();
+    src.stop(ac.currentTime + dur + 0.02);
+  }
+
+  function crunch(bursts, vol, lo, hi) {
+    for (let i = 0; i < bursts; i++) {
+      setTimeout(() => noise(0.05 + Math.random() * 0.04, vol * (1 - i / (bursts + 1)), "bandpass", lo + Math.random() * (hi - lo), lo * 0.6, 2), i * 45 + Math.random() * 25);
+    }
+  }
+
+  function glassShatter(vol) {
+    for (let i = 0; i < 6; i++) {
+      setTimeout(() => {
+        noise(0.06, vol * (1 - i / 8), "highpass", 2800 + Math.random() * 2600, 1600, 1);
+        tone(2300 - i * 240 + Math.random() * 200, 900, 0.06, "sine", vol * 0.55);
+      }, i * 32);
+    }
+  }
+
   const sfx = {
     thud: () => tone(150, 45, 0.09, "triangle", 0.22),
     hit: () => { tone(320, 70, 0.1, "square", 0.16); tone(160, 60, 0.14, "triangle", 0.14); },
@@ -168,6 +208,105 @@
       osc.start();
       osc.stop(ac.currentTime + 1);
     }
+  }
+
+  const ITEM_SND = {
+    banana: {
+      hit: () => { noise(0.1, 0.13, "lowpass", 900, 300); tone(180, 70, 0.12, "sine", 0.16); },
+      break: () => { crunch(3, 0.18, 700, 1600); tone(140, 50, 0.16, "sine", 0.18); }
+    },
+    apple: {
+      hit: () => crunch(2, 0.2, 1400, 2600),
+      break: () => { crunch(4, 0.24, 1200, 3000); tone(220, 80, 0.1, "sine", 0.14); }
+    },
+    egg: {
+      hit: () => { noise(0.05, 0.18, "highpass", 2500, 1500); sfx.splat(); },
+      break: () => { noise(0.07, 0.2, "highpass", 2200, 1200); sfx.splat(); }
+    },
+    fish: {
+      hit: () => { tone(160, 60, 0.14, "sine", 0.22); noise(0.12, 0.14, "lowpass", 600, 200); },
+      break: () => { noise(0.2, 0.18, "lowpass", 500, 150); tone(120, 45, 0.2, "sine", 0.18); }
+    },
+    donut: {
+      hit: () => noise(0.08, 0.11, "lowpass", 500, 200),
+      break: () => { crunch(2, 0.15, 400, 900); tone(150, 60, 0.14, "sine", 0.16); }
+    },
+    cabbage: {
+      hit: () => crunch(3, 0.16, 1800, 3400),
+      break: () => { crunch(5, 0.2, 1600, 3800); noise(0.12, 0.11, "highpass", 2800, 2000); }
+    },
+    chicken: {
+      hit: () => { tone(150, 60, 0.14, "triangle", 0.18); noise(0.08, 0.09, "lowpass", 700, 300); },
+      break: () => { crunch(3, 0.18, 600, 1400); tone(130, 50, 0.18, "sine", 0.18); }
+    },
+    pizza: {
+      hit: () => { noise(0.12, 0.12, "lowpass", 800, 250); tone(200, 90, 0.1, "sine", 0.12); },
+      break: () => crunch(3, 0.16, 900, 2000)
+    },
+    watermelon: {
+      hit: () => { tone(110, 40, 0.2, "sine", 0.26); noise(0.1, 0.13, "lowpass", 600, 250); },
+      break: () => { tone(95, 35, 0.24, "sine", 0.28); crunch(4, 0.22, 900, 2200); noise(0.16, 0.14, "lowpass", 700, 250); }
+    },
+    pumpkin: {
+      hit: () => { tone(130, 50, 0.16, "triangle", 0.22); noise(0.08, 0.09, "bandpass", 900, 400, 2); },
+      break: () => { tone(110, 40, 0.2, "sine", 0.24); crunch(4, 0.18, 800, 2000); }
+    },
+    can: {
+      hit: () => { tone(880, 660, 0.06, "square", 0.13); tone(540, 410, 0.1, "square", 0.09); },
+      break: () => { crunch(3, 0.15, 1200, 2600); tone(700, 180, 0.16, "square", 0.15); }
+    },
+    bottle: {
+      hit: () => { tone(1500, 1000, 0.07, "sine", 0.11); tone(1900, 1250, 0.05, "sine", 0.07); },
+      break: () => glassShatter(0.16)
+    },
+    boot: {
+      hit: () => { tone(120, 55, 0.1, "triangle", 0.18); noise(0.09, 0.09, "lowpass", 400, 150); },
+      break: () => { noise(0.16, 0.13, "bandpass", 500, 200, 2); tone(100, 45, 0.16, "triangle", 0.16); }
+    },
+    battery: {
+      hit: () => { tone(240, 180, 0.05, "square", 0.09); noise(0.04, 0.07, "highpass", 3000, 2500); },
+      break: () => { tone(320, 40, 0.3, "sawtooth", 0.13); crunch(3, 0.13, 1500, 3200); }
+    },
+    tire: {
+      hit: () => { tone(140, 90, 0.18, "sine", 0.2); tone(90, 60, 0.22, "sine", 0.13); },
+      break: () => { tone(180, 60, 0.2, "sine", 0.2); noise(0.12, 0.11, "lowpass", 500, 200); }
+    },
+    radio: {
+      hit: () => { tone(120, 90, 0.1, "sawtooth", 0.09); crunch(2, 0.09, 2000, 4000); },
+      break: () => { crunch(4, 0.15, 1800, 4200); tone(240, 30, 0.35, "sawtooth", 0.13); }
+    },
+    chair: {
+      hit: () => { tone(220, 120, 0.07, "square", 0.15); tone(140, 80, 0.1, "triangle", 0.11); },
+      break: () => { crunch(3, 0.18, 700, 1600); tone(200, 70, 0.14, "square", 0.17); }
+    },
+    tv: {
+      hit: () => { tone(95, 40, 0.16, "triangle", 0.22); crunch(2, 0.09, 1500, 3000); },
+      break: () => { tone(85, 30, 0.4, "sawtooth", 0.18); crunch(5, 0.18, 2000, 4500); noise(0.3, 0.11, "highpass", 3500, 2000); }
+    },
+    safe: {
+      hit: () => { tone(70, 30, 0.3, "sine", 0.32); tone(140, 60, 0.2, "triangle", 0.18); },
+      break: () => { tone(60, 25, 0.5, "sine", 0.34); crunch(4, 0.18, 900, 2200); tone(300, 80, 0.3, "square", 0.13); }
+    },
+    piano: {
+      hit: () => pianoChord(0.09),
+      break: () => { pianoChord(0.1); tone(90, 35, 0.35, "sawtooth", 0.15); crunch(3, 0.15, 600, 1500); }
+    },
+    bomb: {
+      hit: () => tone(500, 500, 0.05, "square", 0.1),
+      break: () => sfx.boom()
+    }
+  };
+
+  function itemHit(def, strength) {
+    const snd = ITEM_SND[def.id];
+    if (snd) snd.hit();
+    else matHit(def, strength);
+  }
+
+  function itemBreak(def) {
+    const snd = ITEM_SND[def.id];
+    if (snd) snd.break();
+    else matBreak(def);
   }
 
   function matHit(def, strength) {
@@ -313,6 +452,20 @@
   const hobo = { mode: "down", timer: 5000, x: 46, dir: 1, phase: 0 };
 
   const CHEERS = ["NICE!", "ECO!", "GET IN THERE!", "SMASH IT!", "CLEAN SWEEP!", "THAT'S THE STUFF!"];
+  const POP_WORDS = ["KERSPLAT!", "CRUNCH!", "BONK!", "THWACK!", "SMOOSH!", "KA-POW!", "CLONK!", "WHUMP!", "BOINK!", "SPLOOSH!", "SQUISH!", "CRASH!", "KERPLOP!", "SOCKO!"];
+  const SPLAT_WORDS = ["SPLAT!", "SQUISH!", "SPLORTCH!", "SMOOSH!", "GOOSH!"];
+  const CRACK_WORDS = ["CRACK!", "SPLAT!", "GOOOSH!", "YOLKED!"];
+  function popWord(list, x, y, color, size) {
+    state.floats.push({
+      x,
+      y,
+      text: list[Math.floor(Math.random() * list.length)],
+      life: 900,
+      color: color || "#ffffff",
+      size: size || 18 + Math.random() * 8,
+      rot: (Math.random() - 0.5) * 0.3
+    });
+  }
 
   function updateLivesHud() {
     el.lives.textContent = "♥".repeat(state.lives) + "♡".repeat(Math.max(0, 3 - state.lives));
@@ -393,7 +546,7 @@
         const trashB = b.plugin && b.plugin.trash;
         const striker = rel > 3 ? (trashA && trashB ? (Vector.magnitude(a.velocity) > Vector.magnitude(b.velocity) ? trashA : trashB) : (trashA || trashB)) : null;
         if (rel > 3) {
-          if (striker) matHit(striker.def, rel);
+          if (striker) itemHit(striker.def, rel);
           else sfx.thud();
         }
         for (const body of [a, b]) {
@@ -406,6 +559,10 @@
           if (!t.landed) {
             t.landed = true;
             t.landTime = state.clock;
+            if (!t.debris) {
+              popWord(POP_WORDS, body.position.x, body.position.y - 34, t.def.tint);
+              addScore(Math.round(t.def.pts * 0.15), body.position.x, body.position.y - 10, t.def.tint);
+            }
             if (t.bomb && !t.fuse) {
               t.fuse = 1400;
               t.fuseBeep = 0;
@@ -651,7 +808,7 @@
       });
     }
     addScore(25, body.position.x, body.position.y - 14, "#ffd54f");
-    state.floats.push({ x: body.position.x, y: body.position.y - 30, text: "CRACK!", life: 700, color: "#ffd54f" });
+    popWord(CRACK_WORDS, body.position.x, body.position.y - 30, "#ffd54f", 19);
   }
 
   function garbScream(text) {
@@ -670,12 +827,13 @@
     burst(body.position.x, body.position.y + 8, t.def.tint, 12, 3.5);
     if (t.def.fragile) burst(body.position.x, body.position.y, "#ffd166", 8, 3);
     addScore(25, body.position.x, body.position.y - 14, t.def.tint);
-    state.floats.push({ x: body.position.x, y: body.position.y - 30, text: label || "SPLAT!", life: 700, color: t.def.tint });
+    popWord(label ? [label] : SPLAT_WORDS, body.position.x, body.position.y - 30, t.def.tint, 19);
   }
 
   function breakBody(body) {
     const t = body.plugin.trash;
-    matBreak(t.def);
+    itemBreak(t.def);
+    popWord(POP_WORDS, body.position.x, body.position.y - 36, "#ffffff", 22);
     state.shake = Math.max(state.shake, 6);
     burst(body.position.x, body.position.y, t.def.tint, 14, 4.5);
     addScore(Math.round(t.def.pts * 0.4), body.position.x, body.position.y - 16, t.def.tint);
@@ -1475,11 +1633,25 @@
 
     for (const f of state.floats) {
       ctx.globalAlpha = Math.min(1, f.life / 500);
-      ctx.fillStyle = f.color;
-      ctx.font = (f.big ? "bold 34px" : "bold 16px") + " 'Trebuchet MS', sans-serif";
-      ctx.fillText(f.text, f.x, f.y);
+      ctx.font = (f.big ? "bold 34px" : "bold " + (f.size || 16) + "px") + " 'Trebuchet MS', sans-serif";
+      ctx.textAlign = "center";
+      if (f.rot) {
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.rotate(f.rot);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(20,30,20,0.75)";
+        ctx.strokeText(f.text, 0, 0);
+        ctx.fillStyle = f.color;
+        ctx.fillText(f.text, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = f.color;
+        ctx.fillText(f.text, f.x, f.y);
+      }
     }
     ctx.globalAlpha = 1;
+    ctx.textAlign = "center";
 
     if (dangerRatio > 0.02) {
       ctx.fillStyle = "rgba(216,67,67," + dangerRatio * 0.16 + ")";
@@ -1566,5 +1738,5 @@
   };
   bgLoader.src = "assets/bg.jpg";
 
-  window.__tp = { getState: () => state, startGame, smashAction, bodies: () => trashBodies(), defs: TRASH, spawn: spawnItem, hit: trySmash, bin: BIN, _sfx: sfx, _matHit: matHit, _matBreak: matBreak, hobo, garb, crackEgg };
+  window.__tp = { getState: () => state, startGame, smashAction, bodies: () => trashBodies(), defs: TRASH, spawn: spawnItem, hit: trySmash, bin: BIN, _sfx: sfx, _matHit: matHit, _matBreak: matBreak, hobo, garb, crackEgg, snd: ITEM_SND, itemHit, itemBreak, popWord, words: { POP_WORDS, SPLAT_WORDS, CRACK_WORDS } };
 })();
